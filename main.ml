@@ -2,6 +2,7 @@ open Printf
 open Exception
 
 let limit = ref 1000
+let fspec = ref (Closure.f)
 
 let rec iter n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
   Format.eprintf "iteration %d@." n;
@@ -10,6 +11,11 @@ let rec iter n e = (* 最適化処理をくりかえす (caml2html: main_iter) *)
   if e = e' then e else
   iter (n - 1) e'
 
+let funcrepr_spec s = (* 関数表現変換メソッドの選択 *)
+  if s = "closure" then Closure.f
+  else if s = "lambda_lifting" then LambdaLifting.f
+  else assert false
+
 let lexbuf outchan l = (* バッファをコンパイルしてチャンネルへ出力する (caml2html: main_lexbuf) *)
   Id.counter := 0;
   Typing.extenv := M.empty;
@@ -17,7 +23,7 @@ let lexbuf outchan l = (* バッファをコンパイルしてチャンネルへ出力する (caml2htm
     (RegAlloc.f
        (Simm.f
 	  (Virtual.f
-	     (Closure.f
+	     (!fspec
 		(iter !limit
 		   (Alpha.f (Cse.f (KNormal.f
 			 (Typing.f
@@ -38,7 +44,7 @@ let debug_spec opt outchan l = (* デバッグ出力する (caml2html: debug) *)
       if opt = "cse" then
         Debug.cse r3
       else
-        let r4 = (Closure.f (iter !limit (Alpha.f r3))) in
+        let r4 = (!fspec (iter !limit (Alpha.f r3))) in
         if opt = "closure" then
           Debug.closure r4
         else
@@ -70,6 +76,7 @@ let () = (* ここからコンパイラの実行が開始される (caml2html: main_entry) *)
   Arg.parse
     [("-inline", Arg.Int(fun i -> Inline.threshold := i), "maximum size of functions inlined");
      ("-iter", Arg.Int(fun i -> limit := i), "maximum number of optimizations iterated");
+     ("-func-repr", Arg.String(fun s -> fspec := funcrepr_spec s), "the function representation [closure / lambda_lifting]");
      ("-debug", Arg.String(fun s -> spec := debug_spec s), "debug print [parser, knormal, cse]")]
     (fun s -> files := !files @ [s])
     ("Mitou Min-Caml Compiler (C) Eijiro Sumii\n" ^
