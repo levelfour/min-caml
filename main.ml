@@ -38,12 +38,13 @@ let debug_spec opt outchan l = (* デバッグ出力する (caml2html: debug) *)
       if opt = "cse" then
         Debug.cse r3
       else
-        Emit.f outchan
-          (RegAlloc.f
-            (Simm.f
-          (Virtual.f
-                (Closure.f
-            (iter !limit (Alpha.f r3))))))
+        let r4 = (Closure.f (iter !limit (Alpha.f r3))) in
+        if opt = "closure" then
+          Debug.closure r4
+        else
+          Emit.f outchan
+            (RegAlloc.f
+              (Simm.f (Virtual.f r4)))
 
 let string s = lexbuf stdout (Lexing.from_string s) (* 文字列をコンパイルして標準出力に表示する (caml2html: main_string) *)
 

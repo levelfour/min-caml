@@ -1,6 +1,7 @@
 open Printf
 open Syntax
 open KNormal
+open Closure
 
 let rec print_indent n =
   if n > 0 then (print_string "| "; print_indent (n-1)) else ()
@@ -59,7 +60,7 @@ let rec print_syntax' expr nest =
 in print_syntax' e 0
 
 let print_knormal e =
-let rec print_knormal' expr nest =
+let rec print_knormal' (expr:KNormal.t) nest =
   print_indent nest;
   match expr with
   | Unit -> printf "()\n"
@@ -114,6 +115,99 @@ let rec print_knormal' expr nest =
     print_string ")\n")
 in print_knormal' e 0
 
+(*
+type t =
+  | Unit
+  | Int of int
+  | Float of float
+  | Neg of Id.t
+  | Add of Id.t * Id.t
+  | Sub of Id.t * Id.t
+  | FNeg of Id.t
+  | FAdd of Id.t * Id.t
+  | FSub of Id.t * Id.t
+  | FMul of Id.t * Id.t
+  | FDiv of Id.t * Id.t
+  | IfEq of Id.t * Id.t * t * t
+  | IfLE of Id.t * Id.t * t * t
+  | Let of (Id.t * Type.t) * t * t
+  | Var of Id.t
+  | MakeCls of (Id.t * Type.t) * closure * t
+  | AppCls of Id.t * Id.t list
+  | AppDir of Id.l * Id.t list
+  | Tuple of Id.t list
+  | LetTuple of (Id.t * Type.t) list * Id.t * t
+  | Get of Id.t * Id.t
+  | Put of Id.t * Id.t * Id.t
+  | ExtArray of Id.l
+type fundef = { name : Id.l * Type.t;
+		args : (Id.t * Type.t) list;
+		formal_fv : (Id.t * Type.t) list;
+		body : t }
+type prog = Prog of fundef list * t
+ *)
+
+let print_closure_prog (Closure.Prog(fds, _)) =
+  let rec print_ids = function
+    | [] -> printf "\n"
+    | x::xs -> printf "%s, " x; print_ids xs in
+  let rec print_idts = function
+    | [] -> printf "\n"
+    | (x, _)::xs -> printf "%s, " x; print_idts xs in
+  let rec print_closure_exp (e:Closure.t) nest =
+    print_indent nest;
+    match e with
+    | Unit -> printf "Unit\n"
+    | Int(i) -> printf "Int %d\n" i
+    | Float(f) -> printf "Float %f\n" f
+    | Neg(x) -> printf "Neg %s\n" x
+    | Add(x, y) -> printf "Add %s, %s\n" x y
+    | Sub(x, y) -> printf "Sub %s, %s\n" x y
+    | FNeg(x) -> printf "FNeg %s\n" x
+    | FAdd(x, y) -> printf "FAdd %s, %s\n" x y
+    | FSub(x, y) -> printf "FSub %s, %s\n" x y
+    | FMul(x, y) -> printf "FMul %s, %s\n" x y
+    | FDiv(x, y) -> printf "FDiv %s, %s\n" x y
+    | IfEq(x1, x2, e1, e2) ->
+        printf "IfEq %s, %s\n" x1 x2;
+        print_closure_exp e1 (nest+1);
+        print_closure_exp e2 (nest+1)
+    | IfLE(x1, x2, e1, e2) ->
+        printf "IfLE %s, %s\n" x1 x2;
+        print_closure_exp e1 (nest+1);
+        print_closure_exp e2 (nest+1)
+    | Let((x, _), e1, e2) ->
+        printf "Let %s\n" x;
+        print_closure_exp e1 (nest+1);
+        print_closure_exp e2 (nest+1)
+    | Var(x) -> printf "Var %s\n" x
+    | MakeCls((x, _), { entry = Id.L(y); actual_fv = ys }, e) ->
+        printf "MakeCls %s : entry = %s : actual_fv = " x y;
+        print_ids ys;
+        print_closure_exp e (nest+1)
+    | AppCls(x, xs) ->
+        printf "AppCls %s : " x;
+        print_ids xs
+    | AppDir(Id.L(x), xs) ->
+        printf "AppCls %s : " x;
+        print_ids xs
+    | Tuple(xs) -> print_ids xs
+    | LetTuple(xs, x, e) -> (* (Id.t * Type.t) list * Id.t * t *)
+        printf "LetTuple %s\n" x;
+        print_closure_exp e (nest+1)
+    | Get(x, y) -> printf "Get %s, %s\n" x y
+    | Put(x, y, z) -> printf "Get %s, %s, %s\n" x y z
+    | ExtArray(Id.L(x)) -> printf "ExtArray %s\n" x in
+  let print_closure_fundef { name = (Id.L(x), t); args = ys; formal_fv = zs; body = e } =
+    printf "\n>> FUNDEF %s\n" x;
+    printf "===== [args] =====\n  ";
+    print_idts ys;
+    printf "===== [fvs] =====\n  ";
+    print_idts zs;
+    printf "===== [body] =====\n";
+    print_closure_exp e 0
+  in List.iter print_closure_fundef fds
+
 let parse e =
   print_syntax e
 
@@ -121,3 +215,6 @@ let knormal e =
   print_knormal e
 
 let cse = knormal
+
+let closure e =
+  print_closure_prog e
