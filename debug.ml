@@ -115,39 +115,7 @@ let rec print_knormal' (expr:KNormal.t) nest =
     print_string ")\n")
 in print_knormal' e 0
 
-(*
-type t =
-  | Unit
-  | Int of int
-  | Float of float
-  | Neg of Id.t
-  | Add of Id.t * Id.t
-  | Sub of Id.t * Id.t
-  | FNeg of Id.t
-  | FAdd of Id.t * Id.t
-  | FSub of Id.t * Id.t
-  | FMul of Id.t * Id.t
-  | FDiv of Id.t * Id.t
-  | IfEq of Id.t * Id.t * t * t
-  | IfLE of Id.t * Id.t * t * t
-  | Let of (Id.t * Type.t) * t * t
-  | Var of Id.t
-  | MakeCls of (Id.t * Type.t) * closure * t
-  | AppCls of Id.t * Id.t list
-  | AppDir of Id.l * Id.t list
-  | Tuple of Id.t list
-  | LetTuple of (Id.t * Type.t) list * Id.t * t
-  | Get of Id.t * Id.t
-  | Put of Id.t * Id.t * Id.t
-  | ExtArray of Id.l
-type fundef = { name : Id.l * Type.t;
-		args : (Id.t * Type.t) list;
-		formal_fv : (Id.t * Type.t) list;
-		body : t }
-type prog = Prog of fundef list * t
- *)
-
-let print_closure_prog (Closure.Prog(fds, _)) =
+let print_closure_prog (Closure.Prog(fds, e)) =
   let rec print_ids = function
     | [] -> printf "\n"
     | x::xs -> printf "%s, " x; print_ids xs in
@@ -189,7 +157,7 @@ let print_closure_prog (Closure.Prog(fds, _)) =
         printf "AppCls %s : " x;
         print_ids xs
     | AppDir(Id.L(x), xs) ->
-        printf "AppCls %s : " x;
+        printf "AppDir %s : " x;
         print_ids xs
     | Tuple(xs) -> print_ids xs
     | LetTuple(xs, x, e) -> (* (Id.t * Type.t) list * Id.t * t *)
@@ -206,7 +174,10 @@ let print_closure_prog (Closure.Prog(fds, _)) =
     print_idts zs;
     printf "===== [body] =====\n";
     print_closure_exp e 0
-  in List.iter print_closure_fundef fds
+  in
+  List.iter print_closure_fundef fds;
+  printf "===== [toplevel] =====\n";
+  print_closure_exp e 0
 
 let parse e =
   print_syntax e
