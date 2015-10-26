@@ -1,7 +1,29 @@
 open Printf
+open Type
 open Syntax
 open KNormal
 open Closure
+
+let rec string_of_type = function
+  | Type.Unit -> "()"
+  | Type.Bool -> "bool"
+  | Type.Int -> "int"
+  | Type.Float -> "float"
+  | Type.Fun(ts, t) -> Printf.sprintf "%s -> %s" (string_of_types ts) (string_of_type t)
+  | Type.Tuple(ts) -> string_of_types ts
+  | Type.Array(t) -> Printf.sprintf "%s array" (string_of_type t)
+  | Type.Var(x) -> (
+    match !x with
+    | None -> Printf.sprintf "None option ref"
+    | Some(t) -> Printf.sprintf "%s ref" (string_of_type t))
+and string_of_types ts =
+  let rec sots = function
+    | [] -> ""
+    | t::ts -> Printf.sprintf ", %s%s" (string_of_type t) (sots ts)
+  in match ts with
+  | [] -> failwith "type list needs at least one type in it."
+  | t::[] -> string_of_type t
+  | t::ts -> Printf.sprintf "(%s%s)" (string_of_type t) (sots ts)
 
 let rec print_indent n =
   if n > 0 then (print_string "| "; print_indent (n-1)) else ()
